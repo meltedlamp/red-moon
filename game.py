@@ -15,7 +15,7 @@ TITLE = "Sky Hill"
 
 # --- Player ---
 PLAYER_W, PLAYER_H = 32, 40
-MOVE_SPEED = 5.2
+MOVE_SPEED = 7
 GRAVITY = 0.62
 JUMP_VEL = -13.2
 MAX_FALL = 16
