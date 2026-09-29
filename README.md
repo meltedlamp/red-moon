@@ -1,31 +1,47 @@
-# Sky Hill
+# The Red Moon
 
-A tiny original side-scrolling platformer written in Python with [Pygame](https://www.pygame.org/).
-Play as a little white cat under a moving, starry night sky: double jump across gaps, ride moving
-platforms, stomp the chomping red monsters, collect glowing coins, and reach the flag on all three hills.
+A tiny original horror platformer written in Python with [Pygame](https://www.pygame.org/).
+Play as a little white cat crossing six haunted hills while a blood-red Moon watches from the sky.
+It follows you with glowing eyes, whispers threats and laughs every time you die, jumpscares you
+between levels, and waits for you at the end in a final boss fight.
 
-![Sky Hill gameplay](screenshots/level1.png)
+![The Red Moon gameplay](screenshots/level1.png)
 
 ## Screenshots
 
-| Start screen | Level 2: lava | Level 3: snow | Victory |
-| --- | --- | --- | --- |
-| ![Start screen](screenshots/start.png) | ![Lava level](screenshots/level2.png) | ![Snow level](screenshots/level3.png) | ![Win screen](screenshots/win.png) |
+| Start screen | Choose a level | Level 5: Sugar Rush |
+| --- | --- | --- |
+| ![Start screen](screenshots/start.png) | ![Level select](screenshots/select.png) | ![Candy level](screenshots/level5.png) |
+
+| Jumpscare | Boss fight: eye laser | Boss fight: stomp it while it's dizzy |
+| --- | --- | --- |
+| ![Jumpscare](screenshots/jumpscare.png) | ![Boss laser](screenshots/boss.png) | ![Dizzy boss](screenshots/boss_dizzy.png) |
+
+| Game over | Victory |
+| --- | --- |
+| ![Game over](screenshots/over.png) | ![Victory](screenshots/win.png) |
 
 ## Features
 
-- **Play as a white cat** that blinks, swishes its tail, walks and turns to face where it's going
-- **Double jump**: press jump again in mid-air for an extra boost (stomping an enemy gives it back)
-- **Chomping red monsters** with snapping teeth that chomp faster when you get close
-- **Stomp enemies** by landing on them from above for 50 points and a bounce
-- **Moving platforms** (purple) that slide side to side or rise and fall, and carry you along
-- **A different floor on every level**: grass on level 1, glowing lava on level 2, snow and icicles on level 3
-- **A living night sky**: stars that drift and twinkle, plus the occasional shooting star
-- Glowing, bobbing cyan coins worth 10 points each
-- Game feel effects: coin sparkles, enemy bursts, double-jump puffs, floating score numbers and screen shake
-- **Clickable menus** with Play and Exit buttons on the start, game over and victory screens
-- 5 lives, and a max score of **720** (27 coins × 10 + 9 monsters × 50)
-- Single file, no assets needed. Everything is drawn in code.
+- **The Red Moon**: a cracked, bleeding moon with glowing eyes that track you and a grin full of teeth.
+  Every time you die it flashes the screen red, **laughs an evil laugh** and whispers one of 60+ creepy lines,
+  with extra lines for each level's theme.
+- **Jumpscares between levels**: the lights go out, the Moon lunges at the screen and **says its line out loud**
+  in a deep, growling voice ("I SEE YOU", "I'M RIGHT BEHIND YOU"...), then laughs.
+- **Final boss fight** against the Moon itself. Dodge spat teeth, a tracking eye laser, meteor showers and
+  summoned monsters, then stomp it when it crashes down dizzy. Five hits wins it, and it gets angrier and
+  faster as it weakens.
+- **Scary background music**: a creepy music-box lullaby with a heartbeat for the levels, and a faster,
+  pounding track for the boss.
+- **7 levels**, each with its own floor: grass, lava, snow, sand, candy, glowing crystals, and the Moon's lair.
+- **Level select** screen so you can jump straight to any level, including the boss.
+- **Play as a white cat** that blinks, swishes its tail, walks and turns to face where it's going.
+- **Double jump**: press jump again in mid-air (stomping an enemy gives it back).
+- **Chomping red monsters** that chomp faster when you get close; they move faster in later levels.
+- **Moving platforms** (purple) that slide or rise and fall, and carry you along.
+- A drifting, twinkling star sky with shooting stars, plus sparkles, bursts, floating scores and screen shake.
+- Clickable **Play / Levels / Exit** menus, 5 lives, and points for coins, stomps and beating the Moon.
+- **One file, no asset files.** All graphics, music and sound effects are generated in code.
 
 ## Getting started
 
@@ -38,6 +54,9 @@ pip install -r requirements.txt
 python game.py
 ```
 
+The Moon's spoken lines and laughs use the text-to-speech voice built into **Windows**. On other systems
+the game still runs with all music and sound effects; the jumpscares just play without the voice.
+
 ## Controls
 
 | Action | Keys / mouse |
@@ -46,17 +65,27 @@ python game.py
 | Jump | `Space`, `Up` or `W` |
 | Double jump | Press jump again while in the air |
 | Start / play again | Click **Play** (or press `Enter`) |
+| Pick a level | Click **Levels**, then a level card (`Esc` goes back) |
+| Mute / unmute | `M` |
 | Quit | Click **Exit** (or press `Esc`) |
 
 ## How to play
 
-- Reach the **flag pole** at the end of each hill to move on to the next one.
+- Reach the **flag pole** at the end of each hill to move on to the next one. Brace yourself for the Moon.
 - Collect **glowing coins** for 10 points each.
 - Jump on a **red monster** from above to stomp it for 50 points. Touching one from the side costs a life.
 - Stand on a **purple platform** to ride it across gaps or up to higher ledges.
-- Use your **double jump** to cross wide gaps or fix a mistimed jump.
-- Falling off the map costs a life and restarts the level.
-- Lose all 5 lives and it's game over. Clear all three hills to win.
+- Falling off the map costs a life and restarts the level. Lose all 5 lives and it's game over.
+
+### Beating the Moon
+
+- The Moon floats above the arena and cycles through its attacks:
+  - **Tooth spit**: volleys of teeth aimed at you.
+  - **Eye laser**: a thin red line locks on to you, then a huge beam fires. Move once the line stops following you.
+  - **Meteor rain**: fireballs fall where the glowing shadows are. Platforms block them.
+  - **Summon**: two red monsters join the fight (stomp them for points).
+- After three attacks it shakes, **dives at you** and crashes down dizzy. **Jump on top of it** before it floats back up.
+- Five hits defeats it for **+500 points**. The damage you deal is kept even if you lose a life.
 
 ## Tweaking the game
 
@@ -69,13 +98,13 @@ JUMP_VEL = -13.2         # jump strength (more negative = higher)
 DOUBLE_JUMP_VEL = -11.5  # strength of the mid-air jump
 AIR_JUMPS = 1            # mid-air jumps allowed (set to 2 for a triple jump)
 START_LIVES = 5
-STOMP_BOUNCE = -10       # bounce height after stomping an enemy
-STOMP_POINTS = 50
-COIN_POINTS = 10
+BOSS_HP = 5              # hits needed to defeat the Moon
+MUSIC_VOLUME = 0.45
 ```
 
-Levels are plain Python data in `make_levels()`, so you can add platforms, coins and enemies
-by editing the lists there. Each level has a `"theme"` of `"grass"`, `"lava"` or `"snow"`.
+The Moon's dialogue lives in `MOON_LINES`, the jumpscare lines in `SCARE_LINES` and its laughs in `LAUGHS`.
+Levels are plain Python data in `make_levels()`, so you can add platforms, coins and enemies by editing the
+lists there. Each level has a `"theme"`: `"grass"`, `"lava"`, `"snow"`, `"sand"`, `"candy"`, `"crystal"` or `"lair"`.
 Moving platforms are listed under `"movers"` as `(x, y, width, height, axis, distance, speed)`,
 where `axis` is `"x"` (side to side) or `"y"` (up and down).
 
