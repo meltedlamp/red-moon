@@ -1,8 +1,11 @@
-"""Builds all music loops, voiced jumpscares and laughs on a background thread."""
+"""Builds all music loops, voiced jumpscares, laughs and Moon dialogue on a background thread."""
 
 import pygame
 
-from .dialogue import LAUGHS, SCARE_BOSS_LINE, SCARE_LINES
+from .dialogue import (
+    LAUGHS, MOON_DEFEAT_LINE, MOON_ENRAGE_LINE, MOON_HURT_LINES, MOON_INTRO_LINES, MOON_LINES, SCARE_BOSS_LINE,
+    SCARE_LINES,
+)
 from .synth import MUSIC_BOX, THUMP, make_stinger, note_freq, synth_track, track_to_sound
 from .voice import demonize, laugh_ssml, speak_lines
 
@@ -14,10 +17,30 @@ LULLABY = [
 ]
 BOSS_STABS = [12, None, 13, None, 12, None, 18, None, 12, None, 13, None, 19, 18, 13, None]
 BOSS_BASS = [0, 0, 0, 1] * 8
+VOICE_BATCH = 16
+
+
+def spoken(line):
+    """Shouted words are written in capitals; lowercase them so the voice doesn't spell them out."""
+    return " ".join(w.lower() if w.isupper() and len(w) > 1 else w for w in line.split())
+
+
+def build_dialogue(store, rate, repeat):
+    """Record every line the Moon says during play into store[("say", line)], a batch at a time."""
+    lines = MOON_INTRO_LINES + [line for group in MOON_LINES.values() for line in group]
+    lines = list(dict.fromkeys(lines + MOON_HURT_LINES + [MOON_ENRAGE_LINE, MOON_DEFEAT_LINE]))
+    for i in range(0, len(lines), VOICE_BATCH):
+        batch = lines[i:i + VOICE_BATCH]
+        recorded = speak_lines({line: spoken(line) for line in batch}, rate)
+        if not recorded:
+            return
+        for line in batch:
+            if line in recorded:
+                store[("say", line)] = track_to_sound(demonize(*recorded[line], rate), repeat)
 
 
 def build_audio(store):
-    """Synthesize the music loops and the voiced jumpscares into store (runs on a background thread)."""
+    """Synthesize the music, voiced jumpscares, laughs and Moon dialogue into store (runs on a background thread)."""
     init = pygame.mixer.get_init()
     if not init or init[1] != -16:
         return
@@ -81,5 +104,6 @@ def build_audio(store):
             store[("voice_ms", line)] = 1000 * end / rate
             store[("scare", line)] = track_to_sound(mix, repeat)
         store["laughs"] = [track_to_sound(laugh, repeat) for laugh in laughs]
+        build_dialogue(store, rate, repeat)
     except pygame.error:
         pass

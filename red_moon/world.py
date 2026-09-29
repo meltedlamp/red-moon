@@ -299,7 +299,7 @@ class WorldRenderMixin:
         if self.boss:
             b = self.boss
             if self.moon_until > pygame.time.get_ticks() and b.state != "gone":
-                self.draw_bubble(round(b.x), round(b.y), BOSS_RADIUS)
+                self.draw_bubble(round(b.x - self.camera_x), round(b.y), BOSS_RADIUS)
             if b.state == "gone":
                 self.draw_flash(WHITE, 255 * (1 - b.timer / 60))
 

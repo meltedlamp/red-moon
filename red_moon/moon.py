@@ -22,11 +22,33 @@ class MoonMixin:
         options = [s for s in laughs if s is not self.last_laugh] or laughs
         sound = random.choice(options)
         self.last_laugh = sound
-        sound.play()
-        self.duck_music(sound)
+        self.moon_voice(sound, queue=True)
+
+    def moon_voice(self, sound, queue=False):
+        """Play sound on the Moon's voice channel. With queue=True it waits for the current line to finish."""
+        now = pygame.time.get_ticks()
+        length = int(sound.get_length() * 1000)
+        channel = self.voice_channel
+        if channel is None:
+            sound.play()
+            self.voice_until = now + length
+        elif queue and channel.get_busy() and now < self.voice_until:
+            channel.queue(sound)
+            self.voice_until += length
+        else:
+            channel.play(sound)
+            self.voice_until = now + length
+        self.duck_until = max(self.duck_until, self.voice_until)
 
     def duck_music(self, sound):
         self.duck_until = pygame.time.get_ticks() + int(sound.get_length() * 1000)
+
+    def moon_hush(self):
+        """Close the speech bubble and cut off anything the Moon is still saying."""
+        self.moon_until = 0
+        self.voice_until = 0
+        if self.voice_channel is not None:
+            self.voice_channel.stop()
 
     def moon_say(self, reason):
         options = MOON_LINES[reason] + MOON_LINES["any"] + MOON_LINES.get(self.theme, [])
@@ -36,7 +58,12 @@ class MoonMixin:
     def moon_speak(self, line):
         self.moon_line = line
         self.last_moon_line = line
-        self.moon_until = pygame.time.get_ticks() + MOON_TALK_MS
+        talk_ms = MOON_TALK_MS
+        sound = self.music.get(("say", line))
+        if sound is not None and not self.muted:
+            self.moon_voice(sound)
+            talk_ms = max(talk_ms, int(sound.get_length() * 1000) + 700)
+        self.moon_until = pygame.time.get_ticks() + talk_ms
 
     @staticmethod
     def wrap_text(text, font, max_width):

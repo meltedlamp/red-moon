@@ -15,6 +15,7 @@ class ScareMixin:
     """Game methods for the between-level jumpscare."""
 
     def start_scare(self, next_level):
+        self.moon_hush()
         self.state = STATE_SCARE
         self.scare_next = next_level
         self.scare_start = pygame.time.get_ticks()

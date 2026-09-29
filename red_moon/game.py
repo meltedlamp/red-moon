@@ -88,12 +88,15 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         self.music = {}
         self.music_track = None
         self.music_channel = None
+        self.voice_channel = None
+        self.voice_until = 0
         self.muted = False
         self.duck_until = 0
         self.last_laugh = None
         if pygame.mixer.get_init():
-            pygame.mixer.set_reserved(1)
+            pygame.mixer.set_reserved(2)
             self.music_channel = pygame.mixer.Channel(0)
+            self.voice_channel = pygame.mixer.Channel(1)
             threading.Thread(target=build_audio, args=(self.music,), daemon=True).start()
 
         self.fx = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -132,7 +135,7 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
             self.moon_speak(random.choice(MOON_INTRO_LINES))
 
     def start_new_game(self, level=0):
-        self.moon_until = 0
+        self.moon_hush()
         self.score = 0
         self.lives = START_LIVES
         self.start_level = level
@@ -148,7 +151,6 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
 
     def die(self, reason):
         self.lives -= 1
-        self.moon_laugh()
         if self.lives <= 0:
             self.state = STATE_OVER
         else:
@@ -156,6 +158,7 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
             self.add_shake(10, 20)
             self.moon_say(reason)
             self.death_flash_at = pygame.time.get_ticks()
+        self.moon_laugh()
 
     def stomp(self, enemy):
         self.player.vy = STOMP_BOUNCE
@@ -313,6 +316,8 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
                         self.start_new_game(replay_level)
                     elif event.key == pygame.K_m:
                         self.muted = not self.muted
+                        if self.muted and self.voice_channel is not None:
+                            self.voice_channel.stop()
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and in_menu:
                     clicked = self.button_at(event.pos)
                     if clicked == "play":

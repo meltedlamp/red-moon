@@ -79,7 +79,7 @@ class BossFightMixin:
 
         if b.state in ("intro", "hover", "attack"):
             drift = 0.022 if b.enraged else 0.015
-            b.x += (WIDTH / 2 + 250 * math.sin(b.clock * drift) - b.x) * 0.06
+            b.x += (self.camera_x + WIDTH / 2 + 250 * math.sin(b.clock * drift) - b.x) * 0.06
             b.y += (BOSS_HOVER_Y + 10 * math.sin(b.clock * 0.05) - b.y) * 0.1
 
         if b.state == "intro":
@@ -107,7 +107,7 @@ class BossFightMixin:
                 b.shake = 4
                 if b.timer == windup:
                     b.dive_from = (b.x, b.y)
-                    b.dive_to = (max(300, min(p.rect.centerx, 500)), BOSS_LOW_Y)
+                    b.dive_to = (self.dive_spot(p.rect.centerx), BOSS_LOW_Y)
             else:
                 k = min(1.0, (b.timer - windup) / 36)
                 b.x = b.dive_from[0] + (b.dive_to[0] - b.dive_from[0]) * k * k
@@ -150,7 +150,10 @@ class BossFightMixin:
                     self.burst(s.x, landing, LAVA, count=14, speed=4)
                     self.add_shake(3, 6)
                     continue
-            elif not (-40 < s.x < WIDTH + 40 and -60 < s.y < HEIGHT + 40):
+            elif not (-40 < s.x - self.camera_x < WIDTH + 40 and -60 < s.y < HEIGHT + 40):
+                continue
+            elif any(plat.collidepoint(s.x, s.y) for plat in self.platforms):
+                self.burst(s.x, s.y, MOON_TEETH, count=5, speed=2)
                 continue
             if self.circle_hits_rect(s.x, s.y, s.r - 2, p.rect.inflate(-8, -6)):
                 self.die("boss")
@@ -176,25 +179,29 @@ class BossFightMixin:
             return t > volleys * 24 + 30
         if b.attack == "laser":
             if t < b.laser_warn * 0.65:
-                b.laser_x += (target.centerx - b.laser_x) * 0.25
+                ex, ey, _ = self.laser_path()
+                aim_x = ex + (target.centerx - ex) * (BOSS_FLOOR_Y - ey) / max(1, target.centery - ey)
+                b.laser_x += (aim_x - b.laser_x) * 0.25
             b.laser_on = b.laser_warn <= t < b.laser_warn + 28
             if t == b.laser_warn:
                 self.add_shake(6, 26)
             if b.laser_on and t % 3 == 0:
-                self.burst(b.laser_x, BOSS_FLOOR_Y, EYE_GLOW, count=3, speed=4)
+                end_x, end_y, _ = self.laser_end()
+                self.burst(end_x, end_y, EYE_GLOW, count=3, speed=4)
             return t >= b.laser_warn + 40
         if b.attack == "meteors":
             if t == 1:
                 count = 9 if b.enraged else 6
-                xs = [target.centerx] + [random.uniform(30, WIDTH - 30) for _ in range(count - 1)]
+                left = self.camera_x + 30
+                xs = [target.centerx] + [random.uniform(left, left + WIDTH - 60) for _ in range(count - 1)]
                 random.shuffle(xs)
                 for i, x in enumerate(xs):
                     self.shots.append(BossShot(x, -40 - i * 60, 0, 3, "meteor"))
             return t >= 110
         if t == 20:
             speed = 3.0 if b.enraged else 2.2
-            for x, direction in ((30, 1), (WIDTH - 64, -1)):
-                walker = Walker(x, BOSS_FLOOR_Y - 32, 0, WIDTH, speed)
+            for x, direction in ((self.camera_x + 30, 1), (self.camera_x + WIDTH - 64, -1)):
+                walker = Walker(x, BOSS_FLOOR_Y - 32, 0, self.level_width, speed)
                 walker.vx = speed * direction
                 self.enemies.append(walker)
                 self.burst(walker.rect.centerx, walker.rect.centery, ENEMY, count=16, speed=4)
@@ -209,13 +216,33 @@ class BossFightMixin:
         eye_y = b.y - 14 * BOSS_RADIUS / 60
         return b.x, eye_y, b.laser_x
 
+    def laser_end(self):
+        """Where the beam stops: (x, y, fraction of the way to the floor). Ledges block it."""
+        ex, ey, lx = self.laser_path()
+        end_y = BOSS_FLOOR_Y
+        for plat in self.platforms:
+            if ey < plat.top < end_y:
+                x = ex + (lx - ex) * (plat.top - ey) / (BOSS_FLOOR_Y - ey)
+                if plat.left <= x <= plat.right:
+                    end_y = plat.top
+        frac = (end_y - ey) / (BOSS_FLOOR_Y - ey)
+        return ex + (lx - ex) * frac, end_y, frac
+
     def in_laser(self, rect):
         ex, ey, lx = self.laser_path()
-        if rect.centery < ey:
+        if not ey <= rect.centery <= self.laser_end()[1]:
             return False
         frac = (rect.centery - ey) / (BOSS_FLOOR_Y - ey)
         beam_x = ex + (lx - ex) * frac
         return abs(rect.centerx - beam_x) < 5 + 19 * frac + rect.w / 2 - 6
+
+    def dive_spot(self, x):
+        """The open patch of floor nearest x where the dizzy Moon fits without overlapping a ledge."""
+        spots = [
+            cx for cx in range(BOSS_RADIUS, self.level_width - BOSS_RADIUS + 1, 8)
+            if not any(self.circle_hits_rect(cx, BOSS_LOW_Y, BOSS_RADIUS, plat) for plat in self.platforms)
+        ]
+        return min(spots, key=lambda cx: abs(cx - x), default=x)
 
     def hit_boss(self):
         b = self.boss
@@ -284,12 +311,12 @@ class BossFightMixin:
         if b.state == "gone":
             return
         R = BOSS_RADIUS
-        x = round(b.x) + random.randint(-b.shake, b.shake) + self.shake_offset[0]
+        x = round(b.x - self.camera_x) + random.randint(-b.shake, b.shake) + self.shake_offset[0]
         y = round(b.y) + random.randint(-b.shake, b.shake) + self.shake_offset[1]
         speed = 8 if b.enraged else 3
         self.moon_glow.set_alpha(150 + int(105 * (0.5 + 0.5 * math.sin(t * speed))))
         self.screen.blit(self.moon_glow, self.moon_glow.get_rect(center=(x, y)))
-        look = max(-1.0, min(1.0, (self.player.rect.centerx - x) / 250))
+        look = max(-1.0, min(1.0, (self.player.rect.centerx - self.camera_x - x) / 250))
         self.draw_moon_face((x, y), R, t, self.boss_mood(), look)
 
         if b.state == "dizzy":
@@ -310,17 +337,23 @@ class BossFightMixin:
     def draw_boss_attacks(self):
         b = self.boss
         self.fx.fill((0, 0, 0, 0))
-        ex, ey, lx = self.laser_path()
+        ex, ey, _ = self.laser_path()
+        end_x, end_y, frac = self.laser_end()
         ox, oy = self.shake_offset
-        ex, ey, lx = ex + ox, ey + oy, lx + ox
-        floor = BOSS_FLOOR_Y + oy
+        ox -= self.camera_x
+        ex, ey, end_x, end_y = ex + ox, ey + oy, end_x + ox, end_y + oy
+        outer, core = 5 + 19 * frac, 2 + 7 * frac
         if b.state == "attack" and b.attack == "laser" and not b.laser_on and b.timer < b.laser_warn:
             alpha = 70 + int(70 * (0.5 + 0.5 * math.sin(b.timer * 0.9)))
-            pygame.draw.line(self.fx, (*EYE_GLOW, alpha), (ex, ey), (lx, floor), 3)
-            pygame.draw.ellipse(self.fx, (*EYE_GLOW, alpha), (lx - 24, floor - 5, 48, 10), 2)
+            pygame.draw.line(self.fx, (*EYE_GLOW, alpha), (ex, ey), (end_x, end_y), 3)
+            pygame.draw.ellipse(self.fx, (*EYE_GLOW, alpha), (end_x - outer, end_y - 5, outer * 2, 10), 2)
         if b.laser_on:
-            pygame.draw.polygon(self.fx, (*EYE_GLOW, 200), [(ex - 5, ey), (ex + 5, ey), (lx + 24, floor), (lx - 24, floor)])
-            pygame.draw.polygon(self.fx, (*EYE_CORE, 230), [(ex - 2, ey), (ex + 2, ey), (lx + 9, floor), (lx - 9, floor)])
+            pygame.draw.polygon(
+                self.fx, (*EYE_GLOW, 200), [(ex - 5, ey), (ex + 5, ey), (end_x + outer, end_y), (end_x - outer, end_y)]
+            )
+            pygame.draw.polygon(
+                self.fx, (*EYE_CORE, 230), [(ex - 2, ey), (ex + 2, ey), (end_x + core, end_y), (end_x - core, end_y)]
+            )
         for s in self.shots:
             if s.kind == "meteor":
                 landing = self.meteor_landing(s)

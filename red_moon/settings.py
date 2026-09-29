@@ -127,6 +127,7 @@ MUSIC_FADE_MS = 1500
 LAUGH_DUCK = 0.3  # music volume multiplier while the Moon laughs
 
 # --- Final boss: the Moon itself ---
+BOSS_ARENA_WIDTH = 1800
 BOSS_HP = 5
 BOSS_ENRAGE_HP = 2
 BOSS_RADIUS = 56

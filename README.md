@@ -24,12 +24,13 @@ between levels, and waits for you at the end in a final boss fight.
 ## Features
 
 - **The Red Moon**: a cracked, bleeding moon with glowing eyes that track you and a grin full of teeth.
-  Every time you die it flashes the screen red, **laughs an evil laugh** and whispers one of 60+ creepy lines,
-  with extra lines for each level's theme.
+  Every time you die it flashes the screen red, **says one of 60+ creepy lines out loud** in its deep, growling
+  voice, then **laughs an evil laugh**. There are extra lines for each level's theme, and everything it says in
+  the boss fight is voiced too.
 - **Jumpscares between levels**: the lights go out, the Moon lunges at the screen and **says its line out loud**
   in a deep, growling voice ("I SEE YOU", "I'M RIGHT BEHIND YOU"...), then laughs.
-- **Final boss fight** against the Moon itself. Dodge spat teeth, a tracking eye laser, meteor showers and
-  summoned monsters, then stomp it when it crashes down dizzy. Five hits wins it, and it gets angrier and
+- **Final boss fight** against the Moon itself in a wide scrolling arena. Dodge spat teeth, a tracking eye
+  laser, meteor showers and summoned monsters (or hide under a rock shelter), then stomp it when it crashes down dizzy. Five hits wins it, and it gets angrier and
   faster as it weakens.
 - **Scary background music**: a creepy music-box lullaby with a heartbeat for the levels, and a faster,
   pounding track for the boss.
@@ -55,7 +56,8 @@ python game.py
 ```
 
 The Moon's spoken lines and laughs use the text-to-speech voice built into **Windows**. On other systems
-the game still runs with all music and sound effects; the jumpscares just play without the voice.
+the game still runs with all music and sound effects; the Moon's lines just show in its speech bubble without
+the voice. The voice lines are recorded in the background when the game starts, which takes about 15 seconds.
 
 ## Controls
 
@@ -79,11 +81,15 @@ the game still runs with all music and sound effects; the jumpscares just play w
 
 ### Beating the Moon
 
-- The Moon floats above the arena and cycles through its attacks:
+- The lair is a wide, scrolling arena, and the Moon follows you across it.
+- **Hide under the rock shelters.** Every ledge blocks teeth, meteors and the laser, so duck underneath one
+  when an attack comes. Standing on top of a ledge won't save you.
+- The Moon cycles through its attacks:
   - **Tooth spit**: volleys of teeth aimed at you.
-  - **Eye laser**: a thin red line locks on to you, then a huge beam fires. Move once the line stops following you.
-  - **Meteor rain**: fireballs fall where the glowing shadows are. Platforms block them.
-  - **Summon**: two red monsters join the fight (stomp them for points).
+  - **Eye laser**: a thin red line locks on to you, then a huge beam fires. Move or take cover once the line
+    stops following you.
+  - **Meteor rain**: fireballs fall where the glowing shadows are.
+  - **Summon**: two red monsters join the fight. Hiding won't stop them, so stomp them for points.
 - After three attacks it shakes, **dives at you** and crashes down dizzy. **Jump on top of it** before it floats back up.
 - Five hits defeats it for **+500 points**. The damage you deal is kept even if you lose a life.
 
@@ -125,7 +131,7 @@ sky-hill/
 │   ├── scare.py         # the jumpscare between levels
 │   ├── world.py         # drawing a level: sky, themed floors, enemies, cat, HUD
 │   ├── menus.py         # start, level select, game over and victory screens
-│   ├── audio.py         # builds the music loops and voiced jumpscares at startup
+│   ├── audio.py         # builds the music, voiced jumpscares and Moon dialogue at startup
 │   ├── synth.py         # tiny software synthesizer (drones, notes, wind, stinger)
 │   └── voice.py         # Windows text-to-speech plus the demonic voice effect
 ├── requirements.txt     # pygame dependency

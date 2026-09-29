@@ -1,6 +1,6 @@
 """Level layouts as plain data."""
 
-from .settings import BOSS_FLOOR_Y, WIDTH
+from .settings import BOSS_ARENA_WIDTH, BOSS_FLOOR_Y
 
 
 def make_levels():
@@ -258,19 +258,29 @@ def make_levels():
             "name": "The Moon's Lair",
             "theme": "lair",
             "boss": True,
-            "width": WIDTH,
-            "spawn": (80, 480),
+            "width": BOSS_ARENA_WIDTH,
+            "spawn": (60, 480),
             "goal": None,
             "platforms": [
-                (0, BOSS_FLOOR_Y, WIDTH, 60),
-                (90, 405, 150, 22),
-                (560, 405, 150, 22),
-                (325, 280, 150, 22),
-                # Invisible walls keep the fight on one screen.
+                (0, BOSS_FLOOR_Y, BOSS_ARENA_WIDTH, 60),
+                # Low rock shelters: duck underneath to block teeth, meteors and the laser.
+                (120, 420, 180, 22),
+                (560, 420, 160, 22),
+                (980, 420, 180, 22),
+                (1400, 420, 160, 22),
+                # Higher ledges between the shelters.
+                (360, 300, 130, 22),
+                (780, 300, 130, 22),
+                (1200, 300, 130, 22),
+                (1600, 300, 130, 22),
+                # Invisible walls at both ends of the arena.
                 (-40, -400, 40, 1000),
-                (WIDTH, -400, 40, 1000),
+                (BOSS_ARENA_WIDTH, -400, 40, 1000),
             ],
-            "coins": [(156, 365), (626, 365), (391, 240)],
+            "coins": [
+                (200, 500), (630, 500), (1060, 500), (1470, 500),
+                (415, 260), (835, 260), (1255, 260), (1655, 260),
+            ],
             "enemies": [],
         },
     ]
