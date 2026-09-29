@@ -89,7 +89,7 @@ the game still runs with all music and sound effects; the jumpscares just play w
 
 ## Tweaking the game
 
-All the game-feel settings are constants at the top of `game.py`:
+All the game-feel settings are constants in `red_moon/settings.py`:
 
 ```python
 MOVE_SPEED = 6           # how fast the cat runs
@@ -102,8 +102,9 @@ BOSS_HP = 5              # hits needed to defeat the Moon
 MUSIC_VOLUME = 0.45
 ```
 
-The Moon's dialogue lives in `MOON_LINES`, the jumpscare lines in `SCARE_LINES` and its laughs in `LAUGHS`.
-Levels are plain Python data in `make_levels()`, so you can add platforms, coins and enemies by editing the
+The Moon's dialogue lives in `red_moon/dialogue.py`: `MOON_LINES`, the jumpscare lines in `SCARE_LINES` and
+its laughs in `LAUGHS`. Levels are plain Python data in `make_levels()` in `red_moon/levels.py`, so you can add
+platforms, coins and enemies by editing the
 lists there. Each level has a `"theme"`: `"grass"`, `"lava"`, `"snow"`, `"sand"`, `"candy"`, `"crystal"` or `"lair"`.
 Moving platforms are listed under `"movers"` as `(x, y, width, height, axis, distance, speed)`,
 where `axis` is `"x"` (side to side) or `"y"` (up and down).
@@ -112,8 +113,22 @@ where `axis` is `"x"` (side to side) or `"y"` (up and down).
 
 ```
 sky-hill/
-├── game.py            # the whole game
-├── requirements.txt   # pygame dependency
-├── screenshots/       # images used in this README
+├── game.py              # launcher: python game.py
+├── red_moon/            # the game package (also runs with: python -m red_moon)
+│   ├── game.py          # Game class: state machine, level loading, gameplay, main loop
+│   ├── settings.py      # tunable constants: window, physics, colours, timings, states
+│   ├── dialogue.py      # everything the Moon says, jumpscare lines and laughs
+│   ├── levels.py        # the seven level layouts as plain data
+│   ├── entities.py      # the cat, walkers, moving platforms, particles, floating text
+│   ├── boss.py          # the Moon boss: its attacks, fight logic and drawing
+│   ├── moon.py          # the Moon in the sky: face, speech bubble, taunts, laughs
+│   ├── scare.py         # the jumpscare between levels
+│   ├── world.py         # drawing a level: sky, themed floors, enemies, cat, HUD
+│   ├── menus.py         # start, level select, game over and victory screens
+│   ├── audio.py         # builds the music loops and voiced jumpscares at startup
+│   ├── synth.py         # tiny software synthesizer (drones, notes, wind, stinger)
+│   └── voice.py         # Windows text-to-speech plus the demonic voice effect
+├── requirements.txt     # pygame dependency
+├── screenshots/         # images used in this README
 └── README.md
 ```
