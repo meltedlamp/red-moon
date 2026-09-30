@@ -8,7 +8,7 @@ import pygame
 from .settings import (
     ACCENT_OVER, ACCENT_START, ACCENT_WIN, BUTTON_H, BUTTON_W, CARD_BG, EXIT_BTN, EYE_GLOW, HEIGHT,
     LEVELS_BTN, MENU_DIM, MENU_PANEL, PLAY_BTN, PLAY_BTN_HOVER, PLAY_BTN_TEXT, START_LIVES,
-    STATE_SELECT, THEME_ACCENT, TITLE, WHITE, WIDTH,
+    STATE_PAUSE, STATE_SELECT, THEME_ACCENT, TITLE, WHITE, WIDTH,
 )
 
 
@@ -16,6 +16,8 @@ class MenuMixin:
     """Game methods for the menu screens and their buttons."""
 
     def menu_buttons(self):
+        if self.state == STATE_PAUSE:
+            return self.pause_buttons()
         if self.state == STATE_SELECT:
             return self.select_buttons()
         buttons = {}
@@ -25,15 +27,20 @@ class MenuMixin:
             buttons[name] = rect
         return buttons
 
+    def pause_buttons(self):
+        resume = pygame.Rect(0, 0, BUTTON_W, BUTTON_H)
+        title = pygame.Rect(0, 0, BUTTON_W, BUTTON_H)
+        resume.center = (WIDTH // 2, 300)
+        title.center = (WIDTH // 2, 372)
+        return {"resume": resume, "title": title}
+
     def select_buttons(self):
         buttons = {}
         cols, card_w, card_h, gap = 4, 136, 118, 14
         left = (WIDTH - (cols * card_w + (cols - 1) * gap)) // 2
         for i, level in enumerate(self.levels):
             row, col = divmod(i, cols)
-            span = 2 if level.get("boss") else 1
-            width = span * card_w + (span - 1) * gap
-            buttons[f"level{i}"] = pygame.Rect(left + col * (card_w + gap), 200 + row * (card_h + 14), width, card_h)
+            buttons[f"level{i}"] = pygame.Rect(left + col * (card_w + gap), 200 + row * (card_h + 14), card_w, card_h)
         back = pygame.Rect(0, 0, 150, 48)
         back.center = (WIDTH // 2, 494)
         buttons["back"] = back
@@ -131,13 +138,12 @@ class MenuMixin:
             pygame.draw.rect(self.screen, accent, card, 3 if is_hover else 2, border_radius=14)
 
             if level.get("boss"):
-                text_x = card.x + (card.w - 96) // 2
-                num = self.button_font.render("Final Boss", True, accent)
-                self.screen.blit(num, num.get_rect(midtop=(text_x, card.y + 22)))
-                label = self.small.render(level["name"], True, WHITE if is_hover else MENU_DIM)
-                self.screen.blit(label, label.get_rect(midtop=(text_x, card.y + 58)))
+                num = self.tiny.render("Final Boss", True, accent)
+                self.screen.blit(num, num.get_rect(midtop=(card.centerx, card.y + 8)))
+                label = self.tiny.render(level["name"], True, WHITE if is_hover else MENU_DIM)
+                self.screen.blit(label, label.get_rect(midtop=(card.centerx, card.y + 28)))
                 mood = "talk" if is_hover else "idle"
-                self.draw_moon_face((card.right - 54, card.centery), 38, t, mood, -0.6)
+                self.draw_moon_face((card.centerx, card.bottom - 36), 26, t, mood, -0.4)
                 continue
 
             num = self.button_font.render(f"Level {i + 1}", True, accent)
@@ -173,6 +179,20 @@ class MenuMixin:
 
         pygame.draw.line(self.screen, accent, (WIDTH // 2 - 120, 178), (WIDTH // 2 + 120, 178), 2)
 
+    def draw_pause(self):
+        self.draw_play()
+        dim = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        dim.fill((8, 10, 18, 170))
+        self.screen.blit(dim, (0, 0))
+        title = self.title_font.render("Paused", True, WHITE)
+        self.screen.blit(title, title.get_rect(center=(WIDTH // 2, 210)))
+        hovered = self.button_at(pygame.mouse.get_pos())
+        buttons = self.pause_buttons()
+        self.draw_button(buttons["resume"], "Resume", "play", hovered == "resume")
+        self.draw_button(buttons["title"], "Title", "levels", hovered == "title")
+        hint = self.small.render("Esc or Enter to resume", True, MENU_DIM)
+        self.screen.blit(hint, hint.get_rect(center=(WIDTH // 2, 440)))
+
     def draw_start(self):
         self.draw_menu(
             TITLE,
@@ -181,8 +201,8 @@ class MenuMixin:
                 "Move with Left / Right  (or A / D)",
                 "Jump with Space  (or Up / W)",
                 "Press jump again mid-air to double jump",
-                "Collect glowing coins  •  Stomp red walkers",
-                f"Clear 6 hills, then defeat the Moon  •  {START_LIVES} lives",
+                "Collect coins  •  Stomp creatures  •  Esc pauses",
+                f"Seven hills, then the Moon  •  Best {self.high_score}",
             ],
             ACCENT_START,
             "Play",
@@ -193,7 +213,7 @@ class MenuMixin:
         self.draw_menu(
             "Victory!",
             [
-                f"Final score: {self.score}",
+                f"Final score: {self.score}    Best: {self.high_score}",
                 "The Moon is defeated. Morning comes.",
                 "Think you can beat that score?",
             ],
@@ -206,7 +226,7 @@ class MenuMixin:
         self.draw_menu(
             "Game over",
             [
-                f"Score this run: {self.score}",
+                f"Score this run: {self.score}    Best: {self.high_score}",
                 "You lost to the red junkies!",
                 "Try again before they invade.",
             ],

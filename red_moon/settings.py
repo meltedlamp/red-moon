@@ -69,6 +69,9 @@ TEETH = (250, 246, 232)
 PUPIL = (20, 10, 14)
 POLE = (236, 236, 240)
 FLAG = (255, 120, 72)
+CHECK_POLE = (210, 230, 255)
+CHECK_FLAG = (90, 190, 255)
+CHECK_LIT = (80, 230, 160)
 HUD_BG = (20, 40, 55)
 WHITE = (255, 255, 255)
 
@@ -105,12 +108,24 @@ THEME_ACCENT = {
     "sand": SAND,
     "candy": (255, 140, 190),
     "crystal": CRYSTAL,
+    "grave": (150, 170, 130),
     "lair": BUBBLE_EDGE,
 }
+GRAVE_DIRT = (36, 34, 30)
+GRAVE_GRASS = (42, 52, 36)
+GRAVE_SKY = (6, 7, 12)
+GRAVE_HILL = (14, 16, 20)
+STONE = (168, 164, 150)
+STONE_EDGE = (96, 92, 84)
+BUSH = (48, 120, 64)
+BUSH_DARK = (24, 64, 36)
+BUSH_LIGHT = (110, 176, 90)
 
 # --- The Moon (watches you from the sky and whispers when you die) ---
 MOON_POS = (672, 138)
 MOON_RADIUS = 60
+MOON_GROW = 12
+MOON_GROW_STEPS = 3
 MOON_TALK_MS = 3400
 MOON_FLASH_MS = 450
 
@@ -151,3 +166,4 @@ STATE_WIN = "win"
 STATE_OVER = "over"
 STATE_SELECT = "select"
 STATE_SCARE = "scare"
+STATE_PAUSE = "pause"

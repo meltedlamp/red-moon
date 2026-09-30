@@ -287,6 +287,7 @@ class BossFightMixin:
                     self.burst(b.x, b.y, color, count=30, speed=9, gravity=0.12)
                 self.add_shake(18, 30)
                 self.score += BOSS_POINTS
+                self.remember_score()
                 self.float_text(f"+{BOSS_POINTS}", b.x, b.y, DIZZY_STAR)
                 b.set("gone")
         elif b.timer >= 110:

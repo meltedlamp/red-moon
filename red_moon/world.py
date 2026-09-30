@@ -6,12 +6,15 @@ import random
 import pygame
 
 from .settings import (
-    BOSS_HP, BOSS_RADIUS, BUBBLE, BUBBLE_EDGE, BUBBLE_TEXT, CANDY_A, CANDY_B, CAT, CAT_EAR, CAT_EYE,
-    CAT_NOSE, CAT_OUTLINE, CAT_PUPIL, COIN, COIN_EDGE, CRYSTAL, CRYSTAL_ROCK, CRYSTAL_SHINE,
-    CRYSTAL_TOP, DIRT, ENEMY, ENEMY_BROW, ENEMY_DARK, EYE_GLOW, FLAG, FROSTING, GRASS, HUD_BG, ICE_ROCK,
+    BOSS_HP, BOSS_RADIUS, BUBBLE, BUBBLE_EDGE, BUBBLE_TEXT, BUSH, BUSH_DARK, BUSH_LIGHT, CANDY_A, CANDY_B,
+    CAT, CAT_EAR, CAT_EYE,
+    CAT_NOSE, CAT_OUTLINE, CAT_PUPIL, CHECK_FLAG, CHECK_LIT, CHECK_POLE, COIN, COIN_EDGE, CRYSTAL,
+    CRYSTAL_ROCK, CRYSTAL_SHINE,
+    CRYSTAL_TOP, DIRT, ENEMY, ENEMY_BROW, ENEMY_DARK, EYE_GLOW, FLAG, FROSTING, GRASS, GRAVE_DIRT,
+    GRAVE_GRASS, GRAVE_HILL, GRAVE_SKY, HUD_BG, ICE_ROCK,
     ICICLE, LAIR_CRACK, LAIR_HILL, LAIR_ROCK, LAIR_SKY, LAIR_TOP, LAVA, LAVA_CRACK, LAVA_HOT, LAVA_ROCK,
     MOON_FLASH_MS, MOUTH, MOVER, MOVER_TOP, POLE, PUPIL, SAND, SANDSTONE, SANDSTONE_LINE, SKY, SKY_DARK,
-    SNOW, SPRINKLES, STAR_DRIFT, STATE_PLAY, STATE_SCARE, TEETH, WHITE, WIDTH,
+    SNOW, SPRINKLES, STAR_DRIFT, STATE_PLAY, STATE_SCARE, STONE, STONE_EDGE, TEETH, WHITE, WIDTH,
 )
 
 
@@ -20,16 +23,22 @@ class WorldRenderMixin:
 
     def draw_background(self):
         lair = self.boss is not None and self.state in (STATE_PLAY, STATE_SCARE)
-        self.screen.fill(LAIR_SKY if lair else SKY)
+        grave = self.theme == "grave" and not lair
+        self.screen.fill(LAIR_SKY if lair else GRAVE_SKY if grave else SKY)
         t = pygame.time.get_ticks() / 1000
         for x, y, size, depth, phase in self.stars:
             sx = (x - (self.camera_x + t * STAR_DRIFT) * depth) % WIDTH
             glow = 150 + int(105 * (0.5 + 0.5 * math.sin(t * 2 + phase)))
-            color = (glow, glow // 3, glow // 3) if lair else (glow, glow, 255)
+            if lair:
+                color = (glow, glow // 3, glow // 3)
+            elif grave:
+                color = (glow // 3, glow // 3, glow // 2)
+            else:
+                color = (glow, glow, 255)
             pygame.draw.circle(self.screen, color, (int(sx), int(y)), size)
         self.draw_shooting_star(t)
         # Soft distant hills (decoration only)
-        hill = LAIR_HILL if lair else SKY_DARK
+        hill = LAIR_HILL if lair else GRAVE_HILL if grave else SKY_DARK
         pygame.draw.ellipse(self.screen, hill, (-80 - self.camera_x // 8, 340, 420, 280))
         pygame.draw.ellipse(self.screen, hill, (280 - self.camera_x // 8, 360, 500, 300))
         pygame.draw.ellipse(self.screen, hill, (700 - self.camera_x // 8, 330, 460, 320))
@@ -138,9 +147,48 @@ class WorldRenderMixin:
                             pygame.draw.circle(s, EYE_GLOW, (sx + dx, r.y + 40), 2)
             pygame.draw.rect(s, LAIR_TOP, (r.x, r.y, r.w, 7))
             pygame.draw.line(s, crack, (r.x, r.y + 7), (r.right - 1, r.y + 7), 2)
+        elif theme == "grave":
+            if r.w >= 160 or r.h <= 30:
+                pygame.draw.rect(s, GRAVE_DIRT, r)
+                pygame.draw.rect(s, GRAVE_GRASS, (r.x, r.y, r.w, min(12, r.h)))
+            else:
+                radius = min(16, r.w // 2)
+                pygame.draw.rect(s, STONE, r, border_radius=radius)
+                pygame.draw.rect(s, STONE_EDGE, r, 2, border_radius=radius)
+                pygame.draw.line(s, STONE_EDGE, (r.centerx, r.y + 8), (r.centerx, min(r.bottom - 8, r.y + 26)), 2)
+                arm = r.y + 14
+                if arm < r.bottom - 6:
+                    pygame.draw.line(s, STONE_EDGE, (r.centerx - 7, arm), (r.centerx + 7, arm), 2)
         else:
             pygame.draw.rect(s, DIRT, r)
             pygame.draw.rect(s, GRASS, (r.x, r.y, r.w, 12))
+
+    def draw_dropper(self, enemy, t):
+        r = self.world_to_screen(enemy.rect)
+        if enemy.state in ("hang", "warn"):
+            wobble = round(math.sin(t * 28) * 4) if enemy.state == "warn" else 0
+            anchor = (r.centerx + wobble, r.y - 36)
+            pygame.draw.line(self.screen, ENEMY_DARK, anchor, (r.centerx + wobble, r.y), 2)
+            r = r.move(wobble, 0)
+        pygame.draw.ellipse(self.screen, ENEMY_DARK, r)
+        pygame.draw.ellipse(self.screen, ENEMY, r.inflate(-6, -8))
+        eye = EYE_GLOW if enemy.state == "warn" else PUPIL
+        pygame.draw.circle(self.screen, eye, (r.centerx - 5, r.centery - 2), 2)
+        pygame.draw.circle(self.screen, eye, (r.centerx + 5, r.centery - 2), 2)
+
+    def draw_bush(self, bush):
+        r = self.world_to_screen(bush.rect)
+        pygame.draw.ellipse(self.screen, BUSH_DARK, r)
+        pygame.draw.ellipse(self.screen, BUSH, r.inflate(-10, -12))
+        pygame.draw.circle(self.screen, BUSH_LIGHT, (r.centerx - 12, r.y + 14), 8)
+        pygame.draw.circle(self.screen, BUSH_LIGHT, (r.centerx + 10, r.y + 12), 7)
+
+    def draw_checkpoint(self, flag):
+        pole = self.world_to_screen(flag.rect)
+        color = CHECK_LIT if flag.reached else CHECK_FLAG
+        pygame.draw.rect(self.screen, CHECK_POLE, (pole.x + 4, pole.y, 4, pole.h))
+        cloth = pygame.Rect(pole.x + 8, pole.y + 4, 22, 14)
+        pygame.draw.rect(self.screen, color, cloth)
 
     def draw_walker(self, enemy, t):
         r = self.world_to_screen(enemy.rect)
@@ -173,6 +221,17 @@ class WorldRenderMixin:
             pygame.draw.polygon(
                 self.screen, TEETH, [(x0, bottom), (x0 + w, bottom), (x0 + w / 2, bottom - tooth_h)]
             )
+
+    def draw_paws(self):
+        for x, y, life, _side in self.paw_prints:
+            sx, sy = self.world_point_to_screen(x, y)
+            alpha = int(200 * life / 36)
+            surf = pygame.Surface((12, 10), pygame.SRCALPHA)
+            color = (226, 220, 206, alpha)
+            pygame.draw.ellipse(surf, color, (1, 4, 8, 5))
+            for i in range(3):
+                pygame.draw.circle(surf, color, (2 + i * 3, 2), 1)
+            self.screen.blit(surf, (sx - 5, sy - 8))
 
     def draw_cat(self, t):
         """Draw the player as a white cat, facing right, then flip it if facing left."""
@@ -273,7 +332,16 @@ class WorldRenderMixin:
             pygame.draw.rect(self.screen, COIN_EDGE, r, 2, border_radius=4)
 
         for enemy in self.enemies:
-            self.draw_walker(enemy, t)
+            if enemy.kind == "dropper":
+                self.draw_dropper(enemy, t)
+            else:
+                self.draw_walker(enemy, t)
+
+        for bush in self.bushes:
+            self.draw_bush(bush)
+
+        for flag in self.checkpoints:
+            self.draw_checkpoint(flag)
 
         if self.goal:
             pole = self.world_to_screen(self.goal)
@@ -285,6 +353,7 @@ class WorldRenderMixin:
             self.draw_boss(t)
             self.draw_boss_attacks()
 
+        self.draw_paws()
         self.draw_cat(t)
 
         for p in self.particles:

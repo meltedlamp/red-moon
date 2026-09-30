@@ -8,12 +8,28 @@ import pygame
 from .dialogue import MOON_LINES
 from .settings import (
     BLOOD, BUBBLE, BUBBLE_EDGE, BUBBLE_TEXT, EYE_CORE, EYE_GLOW, EYE_GLOW_DIM, MOON, MOON_CRACK,
-    MOON_POS, MOON_RADIUS, MOON_SHADE, MOON_SOCKET, MOON_TALK_MS, MOON_TEETH, MOUTH_DARK, THROAT,
+    MOON_GROW, MOON_GROW_STEPS, MOON_POS, MOON_RADIUS, MOON_SHADE, MOON_SOCKET, MOON_TALK_MS,
+    MOON_TEETH, MOUTH_DARK, THROAT,
 )
 
 
 class MoonMixin:
     """Game methods for the Moon watching, talking and laughing."""
+
+    def moon_radius(self):
+        steps = min(getattr(self, "moon_deaths", 0), MOON_GROW_STEPS)
+        return MOON_RADIUS + steps * MOON_GROW
+
+    def moon_glow_for(self, radius):
+        if radius == MOON_RADIUS:
+            return self.moon_glow
+        cached = getattr(self, "_moon_glow_scaled", None)
+        if cached and cached[0] == radius:
+            return cached[1]
+        size = round(self.moon_glow.get_width() * radius / MOON_RADIUS)
+        scaled = pygame.transform.smoothscale(self.moon_glow, (size, size))
+        self._moon_glow_scaled = (radius, scaled)
+        return scaled
 
     def moon_laugh(self):
         laughs = self.music.get("laughs")
@@ -180,7 +196,7 @@ class MoonMixin:
     def draw_moon(self, t):
         now = pygame.time.get_ticks()
         talking = now < self.moon_until
-        R = MOON_RADIUS
+        R = self.moon_radius()
         mx, my = MOON_POS
         if talking:
             mx += random.randint(-2, 2)
@@ -188,11 +204,14 @@ class MoonMixin:
         else:
             my += round(math.sin(t * 1.2) * 4)
 
-        self.moon_glow.set_alpha(255 if talking else 150 + int(105 * (0.5 + 0.5 * math.sin(t * 3))))
-        self.screen.blit(self.moon_glow, self.moon_glow.get_rect(center=(mx, my)))
+        glow = self.moon_glow_for(R)
+        glow.set_alpha(255 if talking else 150 + int(105 * (0.5 + 0.5 * math.sin(t * 3))))
+        self.screen.blit(glow, glow.get_rect(center=(mx, my)))
 
         cat_x = self.world_to_screen(self.player.rect).centerx
         look = max(-1.0, min(1.0, (cat_x - mx) / 250))
+        if self.moon_looking_away():
+            look = -1.0 if look >= 0 else 1.0
         self.draw_moon_face((mx, my), R, t, "talk" if talking else "idle", look)
         if talking:
             self.draw_bubble(mx, my, R)

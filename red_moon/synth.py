@@ -69,6 +69,18 @@ def synth_track(seconds, rate, drones, notes, wind, seed, loop=True):
     return buf
 
 
+def make_pong(rate, freq):
+    """A short square-wave beep, the same kind of hit Pong uses."""
+    n = max(1, int(rate * 0.07))
+    buf = []
+    for i in range(n):
+        square = 1.0 if int(i * freq / rate * 2) % 2 == 0 else -1.0
+        attack = min(1.0, i / max(1, rate * 0.003))
+        release = 1 - i / n
+        buf.append(square * 0.35 * attack * release)
+    return buf
+
+
 def track_to_sound(buf, repeat):
     peak = max(abs(v) for v in buf) or 1.0
     scale = 0.85 * 32767 / peak

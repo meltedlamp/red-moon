@@ -4,7 +4,7 @@ from .settings import BOSS_ARENA_WIDTH, BOSS_FLOOR_Y
 
 
 def make_levels():
-    """Six side-scrolling hills plus the Moon's lair, as lists of rects and positions."""
+    """Seven side-scrolling hills plus the Moon's lair, as lists of rects and positions."""
     # Each platform: (x, y, w, h). Coins/enemies/goal are world coordinates.
     # Each mover: (x, y, w, h, axis, distance, speed) — travels from (x, y) along axis and back.
     return [
@@ -38,6 +38,17 @@ def make_levels():
                 # x, y, patrol left, patrol right
                 (620, 438, 560, 740),
                 (1400, 368, 1360, 1540),
+            ],
+            "bushes": [
+                (280, 520),
+            ],
+            # Hangs high over the right side of a platform. It wobbles, then drops slowly.
+            "droppers": [
+                (900, 150),
+            ],
+            # (x, y) is where the cat stands after touching the blue flag.
+            "checkpoints": [
+                (1680, 420),
             ],
         },
         {
@@ -74,6 +85,12 @@ def make_levels():
                 (480, 418, 460, 600),
                 (1220, 328, 1200, 1360),
                 (2000, 388, 1980, 2160),
+            ],
+            "droppers": [
+                (1800, 110),
+            ],
+            "checkpoints": [
+                (2320, 280),
             ],
         },
         {
@@ -115,6 +132,9 @@ def make_levels():
                 (1040, 348, 1020, 1180),
                 (1740, 288, 1720, 1880),
                 (2240, 308, 2220, 2370),
+            ],
+            "checkpoints": [
+                (2520, 220),
             ],
         },
         {
@@ -158,6 +178,9 @@ def make_levels():
                 (960, 418, 930, 1130),
                 (1600, 388, 1560, 1740),
                 (2290, 328, 2260, 2420),
+            ],
+            "checkpoints": [
+                (2760, 260),
             ],
         },
         {
@@ -204,6 +227,9 @@ def make_levels():
                 (980, 308, 960, 1090, 2.5),
                 (1640, 268, 1620, 1760, 2.5),
                 (2420, 228, 2400, 2550, 2.5),
+            ],
+            "checkpoints": [
+                (2920, 240),
             ],
         },
         {
@@ -252,6 +278,48 @@ def make_levels():
                 (1020, 268, 1000, 1150, 3.0),
                 (1830, 218, 1810, 1950, 3.0),
                 (2680, 248, 2660, 2820, 3.0),
+            ],
+            "checkpoints": [
+                (3160, 240),
+            ],
+        },
+        {
+            "name": "Quiet Graves",
+            "theme": "grave",
+            "width": 2400,
+            "spawn": (80, 420),
+            "goal": (2200, 340),
+            "platforms": [
+                (0, 520, 460, 80),
+                (560, 460, 76, 60),
+                (730, 400, 72, 120),
+                (910, 470, 80, 50),
+                (1100, 420, 380, 180),
+                (1580, 450, 74, 70),
+                (1760, 390, 78, 130),
+                (1960, 460, 86, 60),
+                (2140, 400, 260, 200),
+            ],
+            "coins": [
+                (160, 470),
+                (584, 410),
+                (752, 350),
+                (936, 420),
+                (1240, 370),
+                (1604, 400),
+                (1784, 340),
+                (1990, 410),
+                (2240, 350),
+            ],
+            "enemies": [
+                (1180, 388, 1120, 1420, 1.5),
+            ],
+            "checkpoints": [
+                (1280, 380),
+            ],
+            "bushes": [
+                (240, 520),
+                (1320, 420),
             ],
         },
         {

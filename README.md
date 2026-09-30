@@ -1,7 +1,7 @@
 # The Red Moon
 
 A tiny original horror platformer written in Python with [Pygame](https://www.pygame.org/).
-Play as a little white cat crossing six haunted hills while a blood-red Moon watches from the sky.
+Play as a little white cat crossing seven haunted hills while a blood-red Moon watches from the sky.
 It follows you with glowing eyes, whispers threats and laughs every time you die, jumpscares you
 between levels, and waits for you at the end in a final boss fight.
 
@@ -34,12 +34,20 @@ between levels, and waits for you at the end in a final boss fight.
   faster as it weakens.
 - **Scary background music**: a creepy music-box lullaby with a heartbeat for the levels, and a faster,
   pounding track for the boss.
-- **7 levels**, each with its own floor: grass, lava, snow, sand, candy, glowing crystals, and the Moon's lair.
+- **8 levels**, each with its own floor: grass, lava, snow, sand, candy, glowing crystals, a graveyard, and the Moon's lair.
+- **Best score** is remembered on this computer and shown on the title screen.
+- **Jump blip**: a short Pong-style beep on every jump, higher on the double jump.
+- **Bushes** you can stand in. The Moon looks the other way while you are hidden, and for a moment after.
 - **Level select** screen so you can jump straight to any level, including the boss.
-- **Play as a white cat** that blinks, swishes its tail, walks and turns to face where it's going.
+- **Play as a white cat** that blinks, swishes its tail, walks and turns to face where it's going, and leaves fading paw prints.
+- **Quiet Graves** is darker than the other hills, so the pale tombstones stand out.
 - **Double jump**: press jump again in mid-air (stomping an enemy gives it back).
 - **Chomping red monsters** that chomp faster when you get close; they move faster in later levels.
 - **Moving platforms** (purple) that slide or rise and fall, and carry you along.
+- **Pause** with Esc, then resume or go back to the title.
+- **Blue checkpoint flags.** After you touch one, dying sends you back there, and coins you already picked up stay picked up.
+- **Hanging creatures** on the first two hills. They wobble, then drop slowly, and sit still so they are easy to stomp.
+- **The Moon grows** a little each time you die in a level, then shrinks again when you reach the next hill.
 - A drifting, twinkling star sky with shooting stars, plus sparkles, bursts, floating scores and screen shake.
 - Clickable **Play / Levels / Exit** menus, 5 lives, and points for coins, stomps and beating the Moon.
 - **One file, no asset files.** All graphics, music and sound effects are generated in code.

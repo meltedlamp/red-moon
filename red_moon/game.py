@@ -10,14 +10,17 @@ import pygame
 from .audio import build_audio
 from .boss import Boss, BossFightMixin
 from .dialogue import MOON_INTRO_LINES
-from .entities import FloatingText, MovingPlatform, Particle, Player, Walker
+from .entities import Bush, Checkpoint, Dropper, FloatingText, MovingPlatform, Particle, Player, Walker
 from .levels import make_levels
+from .scores import read_high_score, write_high_score
+from .synth import make_pong, track_to_sound
 from .menus import MenuMixin
 from .moon import MoonMixin
 from .scare import ScareMixin
 from .settings import (
     AIR_JUMPS, CAT, COIN, COIN_POINTS, ENEMY, FPS, HEIGHT, LAUGH_DUCK, MOON_GLOW, MOON_RADIUS,
-    MUSIC_FADE_MS, MUSIC_VOLUME, SCARE_FACE_MS, SCARE_RADIUS, START_LIVES, STATE_OVER, STATE_PLAY,
+    MUSIC_FADE_MS, MUSIC_VOLUME, PLAY_BTN, SCARE_FACE_MS, SCARE_RADIUS, START_LIVES, STATE_OVER,
+    STATE_PAUSE, STATE_PLAY,
     STATE_SCARE, STATE_SELECT, STATE_START, STATE_WIN, STOMP_BOUNCE, STOMP_POINTS, STOMP_TOLERANCE,
     TITLE, WIDTH,
 )
@@ -42,6 +45,7 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         self.level_index = 0
         self.start_level = 0
         self.score = 0
+        self.high_score = read_high_score()
         self.lives = START_LIVES
         self.camera_x = 0
         self.player = Player(80, 420)
@@ -49,12 +53,24 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         self.movers = []
         self.coins = []
         self.enemies = []
+        self.checkpoints = []
+        self.bushes = []
+        self.hide_until = 0
+        self.jump_sounds = {}
+        self.respawn = None
+        self.cleared_coins = set()
+        self.cleared_enemies = set()
+        self.reached_checkpoints = set()
+        self.moon_deaths = 0
         self.goal = pygame.Rect(0, 0, 16, 80)
         self.level_width = WIDTH
         self.level_name = ""
         self.theme = "grass"
 
         self.particles = []
+        self.paw_prints = []
+        self.paw_step = 0.0
+        self.paw_side = 0
         self.texts = []
         self.shake_time = 0
         self.shake_strength = 0
@@ -97,6 +113,11 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
             pygame.mixer.set_reserved(2)
             self.music_channel = pygame.mixer.Channel(0)
             self.voice_channel = pygame.mixer.Channel(1)
+            freq, _, channels = pygame.mixer.get_init()
+            self.jump_sounds = {
+                "ground": track_to_sound(make_pong(freq, 494), channels),
+                "air": track_to_sound(make_pong(freq, 784), channels),
+            }
             threading.Thread(target=build_audio, args=(self.music,), daemon=True).start()
 
         self.fx = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -113,7 +134,7 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
             pygame.draw.circle(surf, (*color, alpha), (radius, radius), r)
         return surf
 
-    def load_level(self, index):
+    def load_level(self, index, fresh=True):
         data = self.levels[index]
         self.level_index = index
         self.level_name = data["name"]
@@ -123,11 +144,34 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         self.platforms = [pygame.Rect(*p) for p in data["platforms"]]
         self.platforms += [m.rect for m in self.movers]
         self.coins = [pygame.Rect(cx, cy, 18, 18) for cx, cy in data["coins"]]
-        self.enemies = [Walker(*e) for e in data["enemies"]]
+        self.enemies = []
+        for i, spec in enumerate(data["enemies"]):
+            enemy = Walker(*spec)
+            enemy.uid = ("walk", i)
+            self.enemies.append(enemy)
+        for i, spec in enumerate(data.get("droppers", [])):
+            enemy = Dropper(*spec)
+            enemy.uid = ("drop", i)
+            self.enemies.append(enemy)
+        self.checkpoints = [Checkpoint(*spot) for spot in data.get("checkpoints", [])]
+        self.bushes = [Bush(*spot) for spot in data.get("bushes", [])]
         self.goal = pygame.Rect(*data["goal"], 18, 88) if data["goal"] else None
-        self.player.reset(*data["spawn"])
+        if fresh:
+            self.respawn = None
+            self.cleared_coins = set()
+            self.cleared_enemies = set()
+            self.reached_checkpoints = set()
+            self.moon_deaths = 0
+        spawn = self.respawn or data["spawn"]
+        self.player.reset(*spawn)
+        self.coins = [coin for coin in self.coins if (coin.x, coin.y) not in self.cleared_coins]
+        self.enemies = [enemy for enemy in self.enemies if enemy.uid not in self.cleared_enemies]
+        for flag in self.checkpoints:
+            flag.reached = flag.spawn in self.reached_checkpoints
         self.camera_x = 0
         self.particles = []
+        self.paw_prints = []
+        self.paw_step = 0.0
         self.texts = []
         self.shots = []
         self.boss = Boss() if data.get("boss") else None
@@ -145,12 +189,13 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
     def restart_current_level(self):
         # Damage dealt to the Moon sticks between lives so the fight stays winnable.
         boss_hp = self.boss.hp if self.boss else None
-        self.load_level(self.level_index)
+        self.load_level(self.level_index, fresh=False)
         if self.boss and boss_hp:
             self.boss.hp = boss_hp
 
     def die(self, reason):
         self.lives -= 1
+        self.moon_deaths += 1
         if self.lives <= 0:
             self.state = STATE_OVER
         else:
@@ -165,12 +210,18 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         self.player.on_ground = False
         self.player.air_jumps_left = AIR_JUMPS
         self.score += STOMP_POINTS
+        self.remember_score()
+        uid = getattr(enemy, "uid", None)
+        if uid is not None:
+            self.cleared_enemies.add(uid)
         self.burst(enemy.rect.centerx, enemy.rect.centery, ENEMY, count=20, speed=5)
         self.float_text(f"+{STOMP_POINTS}", enemy.rect.centerx, enemy.rect.top, ENEMY)
         self.add_shake(5, 10)
 
     def collect_coin(self, coin):
+        self.cleared_coins.add((coin.x, coin.y))
         self.score += COIN_POINTS
+        self.remember_score()
         self.burst(coin.centerx, coin.centery, COIN, count=12, speed=3, gravity=0.05)
         self.float_text(f"+{COIN_POINTS}", coin.centerx, coin.top, COIN)
 
@@ -217,6 +268,49 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         target = self.player.rect.centerx - WIDTH // 3
         self.camera_x = max(0, min(target, self.level_width - WIDTH))
 
+    def remember_score(self):
+        if self.score > self.high_score:
+            self.high_score = self.score
+            write_high_score(self.score)
+
+    def play_jump(self, kind):
+        sound = self.jump_sounds.get(kind)
+        if sound is not None and not self.muted:
+            sound.play()
+
+    def leave_paw(self):
+        player = self.player
+        if not player.on_ground or player.vx == 0:
+            return
+        self.paw_step += abs(player.vx)
+        if self.paw_step < 16:
+            return
+        self.paw_step = 0
+        self.paw_side = 1 - self.paw_side
+        x, y = player.rect.midbottom
+        x += (-7 if self.paw_side else 5) * player.facing
+        self.paw_prints.append([x, y - 1, 36, self.paw_side])
+        if len(self.paw_prints) > 48:
+            del self.paw_prints[0]
+
+    def update_hiding(self):
+        inside = any(self.player.rect.colliderect(bush.rect) for bush in self.bushes)
+        if inside:
+            self.hide_until = pygame.time.get_ticks() + 1000
+
+    def moon_looking_away(self):
+        return pygame.time.get_ticks() < self.hide_until
+
+    def touch_checkpoints(self):
+        for flag in self.checkpoints:
+            if flag.reached or not self.player.rect.colliderect(flag.rect):
+                continue
+            flag.reached = True
+            self.respawn = flag.spawn
+            self.reached_checkpoints.add(flag.spawn)
+            self.float_text("Checkpoint", flag.rect.centerx, flag.rect.top, PLAY_BTN)
+            return
+
     def world_to_screen(self, rect):
         ox, oy = self.shake_offset
         return rect.move(-self.camera_x + ox, oy)
@@ -227,6 +321,10 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
 
     def update_play(self):
         self.update_effects()
+        self.leave_paw()
+        for paw in self.paw_prints:
+            paw[2] -= 1
+        self.paw_prints = [paw for paw in self.paw_prints if paw[2] > 0]
 
         # Carry the player with the platform they were standing on last frame.
         for mover in self.movers:
@@ -236,16 +334,22 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
                 self.player.rect.y += dy
 
         keys = pygame.key.get_pressed()
-        if self.player.handle_input(keys):
+        jumped = self.player.handle_input(keys)
+        if jumped:
+            self.play_jump(jumped)
+        if jumped == "air":
             feet = self.player.rect.midbottom
             self.burst(feet[0], feet[1], CAT, count=10, speed=2.5, gravity=0.02)
         self.player.apply_gravity()
         prev_bottom = self.player.rect.bottom
         self.player.move_and_collide(self.platforms)
 
+        self.update_hiding()
+        self.touch_checkpoints()
+
         survivors = []
         for enemy in self.enemies:
-            enemy.update()
+            enemy.update(self.player, self.platforms)
             if not self.player.rect.colliderect(enemy.rect):
                 survivors.append(enemy)
             elif prev_bottom <= enemy.rect.top + STOMP_TOLERANCE:
@@ -283,7 +387,7 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         channel = self.music_channel
         if channel is None:
             return
-        if self.state == STATE_SCARE:
+        if self.state in (STATE_SCARE, STATE_PAUSE):
             channel.pause()
             return
         want = "boss" if self.boss and self.state == STATE_PLAY else "creep"
@@ -301,7 +405,7 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         running = True
         cursor_is_hand = False
         while running:
-            in_menu = self.state in (STATE_START, STATE_WIN, STATE_OVER, STATE_SELECT)
+            in_menu = self.state in (STATE_START, STATE_WIN, STATE_OVER, STATE_SELECT, STATE_PAUSE)
             replay_level = 0 if self.state == STATE_START else self.start_level
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -310,8 +414,14 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
                     if event.key == pygame.K_ESCAPE:
                         if self.state == STATE_SELECT:
                             self.state = STATE_START
+                        elif self.state == STATE_PLAY:
+                            self.state = STATE_PAUSE
+                        elif self.state == STATE_PAUSE:
+                            self.state = STATE_PLAY
                         else:
                             running = False
+                    elif event.key == pygame.K_RETURN and self.state == STATE_PAUSE:
+                        self.state = STATE_PLAY
                     elif event.key == pygame.K_RETURN and in_menu and self.state != STATE_SELECT:
                         self.start_new_game(replay_level)
                     elif event.key == pygame.K_m:
@@ -320,8 +430,14 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
                             self.voice_channel.stop()
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and in_menu:
                     clicked = self.button_at(event.pos)
-                    if clicked == "play":
-                        self.start_new_game(replay_level)
+                    if clicked == "play" or clicked == "resume":
+                        if clicked == "resume":
+                            self.state = STATE_PLAY
+                        else:
+                            self.start_new_game(replay_level)
+                    elif clicked == "title":
+                        self.moon_hush()
+                        self.state = STATE_START
                     elif clicked == "levels":
                         self.state = STATE_SELECT
                     elif clicked == "back":
@@ -331,7 +447,7 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
                     elif clicked == "exit":
                         running = False
 
-            in_menu = self.state in (STATE_START, STATE_WIN, STATE_OVER, STATE_SELECT)
+            in_menu = self.state in (STATE_START, STATE_WIN, STATE_OVER, STATE_SELECT, STATE_PAUSE)
             want_hand = in_menu and self.button_at(pygame.mouse.get_pos()) is not None
             if want_hand != cursor_is_hand:
                 pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND if want_hand else pygame.SYSTEM_CURSOR_ARROW)
@@ -347,6 +463,8 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
                 self.draw_start()
             elif self.state == STATE_PLAY:
                 self.draw_play()
+            elif self.state == STATE_PAUSE:
+                self.draw_pause()
             elif self.state == STATE_SCARE:
                 self.draw_scare()
             elif self.state == STATE_WIN:

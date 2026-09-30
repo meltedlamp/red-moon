@@ -47,12 +47,12 @@ class Player:
         if self.on_ground:
             self.vy = JUMP_VEL
             self.on_ground = False
-            return False
+            return "ground"
         if self.air_jumps_left > 0:
             self.air_jumps_left -= 1
             self.vy = DOUBLE_JUMP_VEL
-            return True
-        return False
+            return "air"
+        return None
 
     def apply_gravity(self):
         self.vy = min(self.vy + GRAVITY, MAX_FALL)
@@ -92,8 +92,9 @@ class Walker:
         self.right = right
         self.vx = speed
         self.chomp_phase = random.uniform(0, math.tau)
+        self.kind = "walker"
 
-    def update(self):
+    def update(self, player=None, platforms=None):
         self.x += self.vx
         if self.x <= self.left:
             self.x = self.left
@@ -102,6 +103,67 @@ class Walker:
             self.x = self.right - self.rect.w
             self.vx = -abs(self.vx)
         self.rect.x = round(self.x)
+
+
+class Dropper:
+    """Hangs still, wobbles when the cat walks under it, then drops slowly and sits."""
+
+    WARN_FRAMES = 50
+    TRIGGER = 48
+
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(int(x), int(y), 28, 28)
+        self.home_x = int(x)
+        self.state = "hang"
+        self.warn = 0
+        self.vy = 0.0
+        self.vx = 1
+        self.kind = "dropper"
+        self.chomp_phase = 0.0
+
+    def update(self, player=None, platforms=None):
+        if self.state == "rest":
+            return
+        if self.state == "hang":
+            if player is None:
+                return
+            close = abs(player.rect.centerx - self.rect.centerx) < self.TRIGGER
+            below = player.rect.top > self.rect.bottom
+            if close and below:
+                self.state = "warn"
+                self.warn = self.WARN_FRAMES
+            return
+        if self.state == "warn":
+            self.warn -= 1
+            if self.warn <= 0:
+                self.state = "fall"
+                self.vy = 1.6
+            return
+        self.vy = min(self.vy + 0.03, 2.2)
+        self.rect.y += int(round(self.vy))
+        if not platforms:
+            return
+        for plat in platforms:
+            feet_were = self.rect.bottom - self.vy
+            if self.rect.colliderect(plat) and feet_were <= plat.top + 6:
+                self.rect.bottom = plat.top
+                self.vy = 0
+                self.state = "rest"
+                return
+
+
+class Bush:
+    """A soft shrub. Standing in it makes the Moon look away."""
+
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(int(x), int(y) - 46, 58, 46)
+
+
+class Checkpoint:
+    def __init__(self, x, y):
+        self.spawn = (int(x), int(y))
+        self.rect = pygame.Rect(int(x) + 8, int(y) - 28, 14, 68)
+        self.reached = False
 
 
 class MovingPlatform:
