@@ -49,8 +49,8 @@ between levels, and waits for you at the end in a final boss fight.
 You need **Python 3.8+**.
 
 ```bash
-git clone https://github.com/yugdogra0/sky-hill.git
-cd sky-hill
+git clone https://github.com/yugdogra0/red-moon.git
+cd red-moon
 pip install -r requirements.txt
 python game.py
 ```
@@ -118,7 +118,7 @@ where `axis` is `"x"` (side to side) or `"y"` (up and down).
 ## Project structure
 
 ```
-sky-hill/
+red-moon/
 ├── game.py              # launcher: python game.py
 ├── red_moon/            # the game package (also runs with: python -m red_moon)
 │   ├── game.py          # Game class: state machine, level loading, gameplay, main loop
