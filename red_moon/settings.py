@@ -4,6 +4,8 @@
 WIDTH, HEIGHT = 800, 600
 FPS = 60
 TITLE = "The Red Moon"
+# Title-screen Exit in the browser returns here. The desktop app still closes.
+ARCADE_URL = "https://meltedlamp.github.io/melted-arcade/"
 
 # --- Player ---
 PLAYER_W, PLAYER_H = 32, 40

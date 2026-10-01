@@ -24,7 +24,7 @@ from .settings import (
     MUSIC_FADE_MS, MUSIC_VOLUME, PLAY_BTN, SCARE_FACE_MS, SCARE_RADIUS, START_LIVES, STATE_OVER,
     STATE_PAUSE, STATE_PLAY,
     STATE_SCARE, STATE_SELECT, STATE_START, STATE_WIN, STOMP_BOUNCE, STOMP_POINTS, STOMP_TOLERANCE,
-    TITLE, WIDTH,
+    ARCADE_URL, TITLE, WIDTH,
 )
 from .world import WorldRenderMixin
 
@@ -426,12 +426,20 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         channel.set_volume(0 if self.muted else MUSIC_VOLUME * (LAUGH_DUCK if ducked else 1))
 
     def request_quit(self):
-        """Leave the desktop app. In the browser, go back to the title and keep the page open."""
+        """Leave the desktop app. In the browser, Exit on the title returns to the arcade."""
         if sys.platform != "emscripten":
             return True
         self.moon_hush()
+        if self.state == STATE_START:
+            self.open_arcade()
+            return False
         self.state = STATE_START
         return False
+
+    def open_arcade(self):
+        import platform
+
+        platform.window.location.href = ARCADE_URL
 
     async def run(self):
         running = True

@@ -2,6 +2,7 @@
 
 import math
 import random
+import sys
 
 import pygame
 
@@ -88,7 +89,7 @@ class MenuMixin:
         s = self.button_font.render(label, True, text_color)
         self.screen.blit(s, s.get_rect(center=r.center))
 
-    def draw_menu(self, title, lines, accent, play_label, moon_mood):
+    def draw_menu(self, title, lines, accent, play_label, moon_mood, hint=None):
         self.draw_panel(title, accent)
 
         t = pygame.time.get_ticks() / 1000
@@ -119,8 +120,10 @@ class MenuMixin:
         self.draw_button(buttons["levels"], "Levels", "levels", hovered == "levels")
         self.draw_button(buttons["exit"], "Exit", "exit", hovered == "exit")
 
-        hint = self.small.render("Enter to play  •  M to mute  •  Esc to quit", True, MENU_DIM)
-        self.screen.blit(hint, hint.get_rect(center=(WIDTH // 2, 514)))
+        if hint is None:
+            hint = "Enter to play  •  M to mute  •  Esc to quit"
+        hint_s = self.small.render(hint, True, MENU_DIM)
+        self.screen.blit(hint_s, hint_s.get_rect(center=(WIDTH // 2, 514)))
 
     def draw_select(self):
         self.draw_panel("Choose a level", ACCENT_START)
@@ -194,6 +197,9 @@ class MenuMixin:
         self.screen.blit(hint, hint.get_rect(center=(WIDTH // 2, 440)))
 
     def draw_start(self):
+        hint = "Enter to play  •  M to mute  •  Esc to quit"
+        if sys.platform == "emscripten":
+            hint = "Enter to play  •  M to mute  •  Esc returns to the arcade"
         self.draw_menu(
             TITLE,
             [
@@ -207,6 +213,7 @@ class MenuMixin:
             ACCENT_START,
             "Play",
             "idle",
+            hint,
         )
 
     def draw_win(self):
