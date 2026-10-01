@@ -5,7 +5,6 @@ import os
 import subprocess
 import sys
 import tempfile
-import wave
 from array import array
 
 from .synth import SINE_TABLE
@@ -27,6 +26,7 @@ def speak_lines(texts, rate):
     """
     if sys.platform != "win32":
         return {}
+    import wave
     voices = {}
     with tempfile.TemporaryDirectory() as folder:
         paths = {key: os.path.join(folder, f"line{i}.wav") for i, key in enumerate(texts)}

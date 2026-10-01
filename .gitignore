@@ -2,10 +2,10 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+build/
 .env
 .env.*
 *.egg-info/
 .DS_Store
 Thumbs.db
-main.py
 ai.txt

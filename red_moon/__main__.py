@@ -1,3 +1,5 @@
+import asyncio
+
 from .game import main
 
-main()
+asyncio.run(main())

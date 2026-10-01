@@ -1,9 +1,11 @@
 """The Game class: state machine, level loading, gameplay updates and the main loop."""
 
+import asyncio
 import math
 import random
 import sys
 import threading
+from pathlib import Path
 
 import pygame
 
@@ -27,6 +29,15 @@ from .settings import (
 from .world import WorldRenderMixin
 
 
+def load_font(size, bold=False):
+    """Segoe UI on the desktop. The browser has no Segoe, so it uses the bundled Nunito."""
+    if sys.platform == "emscripten":
+        filename = "Nunito-Bold.ttf" if bold else "Nunito-Regular.ttf"
+        path = Path(__file__).resolve().parent / "fonts" / filename
+        return pygame.font.Font(path, size)
+    return pygame.font.SysFont("segoeui", size, bold=bold)
+
+
 class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
     """The whole game. Drawing and feature logic live in the mixins it inherits from."""
 
@@ -36,10 +47,10 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         pygame.display.set_caption(TITLE)
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.SysFont("segoeui", 28)
-        self.small = pygame.font.SysFont("segoeui", 20)
-        self.title_font = pygame.font.SysFont("segoeui", 60, bold=True)
-        self.button_font = pygame.font.SysFont("segoeui", 26, bold=True)
+        self.font = load_font(28)
+        self.small = load_font(20)
+        self.title_font = load_font(60, bold=True)
+        self.button_font = load_font(26, bold=True)
         self.levels = make_levels()
         self.state = STATE_START
         self.level_index = 0
@@ -109,7 +120,23 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         self.muted = False
         self.duck_until = 0
         self.last_laugh = None
-        if pygame.mixer.get_init():
+        if sys.platform != "emscripten":
+            self.start_audio()
+
+        self.fx = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self.tiny = load_font(17)
+        self.boss = None
+        self.shots = []
+        self.death_flash_at = -10**6
+
+    def start_audio(self):
+        """Open the mixer and the jump beeps. The desktop builds music on a thread."""
+        if not pygame.mixer.get_init():
+            try:
+                pygame.mixer.init(22050, -16, 2, 1024)
+            except pygame.error:
+                return
+        try:
             pygame.mixer.set_reserved(2)
             self.music_channel = pygame.mixer.Channel(0)
             self.voice_channel = pygame.mixer.Channel(1)
@@ -118,13 +145,10 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
                 "ground": track_to_sound(make_pong(freq, 494), channels),
                 "air": track_to_sound(make_pong(freq, 784), channels),
             }
+        except pygame.error:
+            return
+        if sys.platform != "emscripten":
             threading.Thread(target=build_audio, args=(self.music,), daemon=True).start()
-
-        self.fx = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        self.tiny = pygame.font.SysFont("segoeui", 17)
-        self.boss = None
-        self.shots = []
-        self.death_flash_at = -10**6
 
     @staticmethod
     def make_glow(color, radius):
@@ -401,15 +425,36 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         ducked = pygame.time.get_ticks() < self.duck_until
         channel.set_volume(0 if self.muted else MUSIC_VOLUME * (LAUGH_DUCK if ducked else 1))
 
-    def run(self):
+    def request_quit(self):
+        """Leave the desktop app. In the browser, go back to the title and keep the page open."""
+        if sys.platform != "emscripten":
+            return True
+        self.moon_hush()
+        self.state = STATE_START
+        return False
+
+    async def run(self):
         running = True
         cursor_is_hand = False
+        if sys.platform == "emscripten":
+            self.draw_start()
+            pygame.display.flip()
+            await asyncio.sleep(0)
+            # The mixer opened before the browser audio device was ready, so open it again.
+            try:
+                pygame.mixer.quit()
+            except pygame.error:
+                pass
+            self.start_audio()
+            if pygame.mixer.get_init():
+                build_audio(self.music)
         while running:
             in_menu = self.state in (STATE_START, STATE_WIN, STATE_OVER, STATE_SELECT, STATE_PAUSE)
             replay_level = 0 if self.state == STATE_START else self.start_level
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    running = False
+                    if self.request_quit():
+                        running = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         if self.state == STATE_SELECT:
@@ -418,7 +463,7 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
                             self.state = STATE_PAUSE
                         elif self.state == STATE_PAUSE:
                             self.state = STATE_PLAY
-                        else:
+                        elif self.request_quit():
                             running = False
                     elif event.key == pygame.K_RETURN and self.state == STATE_PAUSE:
                         self.state = STATE_PLAY
@@ -445,12 +490,18 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
                     elif clicked and clicked.startswith("level"):
                         self.start_new_game(int(clicked[len("level"):]))
                     elif clicked == "exit":
-                        running = False
+                        if self.request_quit():
+                            running = False
 
             in_menu = self.state in (STATE_START, STATE_WIN, STATE_OVER, STATE_SELECT, STATE_PAUSE)
             want_hand = in_menu and self.button_at(pygame.mouse.get_pos()) is not None
             if want_hand != cursor_is_hand:
-                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND if want_hand else pygame.SYSTEM_CURSOR_ARROW)
+                try:
+                    pygame.mouse.set_cursor(
+                        pygame.SYSTEM_CURSOR_HAND if want_hand else pygame.SYSTEM_CURSOR_ARROW
+                    )
+                except pygame.error:
+                    pass
                 cursor_is_hand = want_hand
 
             if self.state == STATE_PLAY:
@@ -476,10 +527,11 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
 
             pygame.display.flip()
             self.clock.tick(FPS)
+            await asyncio.sleep(0)
 
         pygame.quit()
         sys.exit(0)
 
 
-def main():
-    Game().run()
+async def main():
+    await Game().run()

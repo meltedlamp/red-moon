@@ -5,6 +5,10 @@ Play as a little white cat crossing seven haunted hills while a blood-red Moon w
 It follows you with glowing eyes, whispers threats and laughs every time you die, jumpscares you
 between levels, and waits for you at the end in a final boss fight.
 
+Play it in the browser: [https://yugdogra0.github.io/red-moon/](https://yugdogra0.github.io/red-moon/)
+
+That link opens the title screen. The Moon's spoken voice is part of the Windows app; in the browser the lines stay in the speech bubble, with the music and sound effects.
+
 ![The Red Moon gameplay](screenshots/level1.png)
 
 ## Screenshots
