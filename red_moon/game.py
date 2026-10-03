@@ -14,7 +14,7 @@ from .boss import Boss, BossFightMixin
 from .dialogue import MOON_INTRO_LINES
 from .entities import Bush, Checkpoint, Dropper, FloatingText, MovingPlatform, Particle, Player, Walker
 from .levels import make_levels
-from .scores import read_high_score, write_high_score
+from .scores import note_arcade, read_high_score, write_high_score
 from .synth import make_pong, track_to_sound
 from .menus import MenuMixin
 from .moon import MoonMixin
@@ -222,6 +222,7 @@ class Game(MoonMixin, ScareMixin, BossFightMixin, WorldRenderMixin, MenuMixin):
         self.moon_deaths += 1
         if self.lives <= 0:
             self.state = STATE_OVER
+            note_arcade("moon", self.score)
         else:
             self.restart_current_level()
             self.add_shake(10, 20)
